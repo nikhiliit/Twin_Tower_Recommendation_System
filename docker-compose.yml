@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: two_tower_api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount local artifacts as read-only — no data baked into image.
+      - ./checkpoints:/app/checkpoints:ro
+      - ./data/processed:/app/data/processed:ro
+    environment:
+      # Model checkpoints — swap MODEL_B_CHECKPOINT to test A/B.
+      MODEL_A_CHECKPOINT: checkpoints/best_model.pt
+      MODEL_B_CHECKPOINT: checkpoints/best_model.pt
+      FAISS_INDEX_PATH: checkpoints/faiss_index
+      PROCESSED_DIR: data/processed
+      CONFIG_PATH: configs/hardneg_config.yaml
+      # Fraction of traffic routed to variant A (0.5 = 50/50 split).
+      AB_TRAFFIC_SPLIT: "0.5"
+      # Device: cpu or cuda (cuda requires nvidia runtime).
+      DEVICE: cpu
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

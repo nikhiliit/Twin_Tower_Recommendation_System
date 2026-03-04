@@ -58,7 +58,7 @@ $$
 Bayesian Personalized Ranking — pairwise ranking objective. For each user $u$, positive item $i^+$, negative item $i^-$:
 
 $$
-\mathcal{L}_{\text{BPR}} = -\frac{1}{|\mathcal{D}|} \sum_{(u, i^+, i^-) \in \mathcal{D}} \log \sigma\!\left(\hat{e}_u^\top \hat{e}_{i^+} - \hat{e}_u^\top \hat{e}_{i^-}\right) + \lambda \|\Theta\|_2^2
+\mathcal{L}_{\text{BPR}} = -\frac{1}{|\mathcal{D}|} \sum_{(u, i^+, i^-) \in \mathcal{D}} \log \sigma \left(\hat{e}_u^\top \hat{e}_{i^+} - \hat{e}_u^\top \hat{e}_{i^-}\right) + \lambda \|\Theta\|_2^2
 $$
 
 where $\sigma(x) = \frac{1}{1+e^{-x}}$ and $\lambda$ is L2 regularization.
@@ -101,7 +101,7 @@ $$
 **Dynamic hard negative mining:** After each epoch, rebuild FAISS index with current model checkpoint. For each user, retrieve top-$M$ items, filter positives, take top-$K$ as hard negatives:
 
 $$
-\mathcal{N}^{\text{hard}}_i = \text{Top-}K\!\left( \left\{ j : \hat{e}_{u_i}^\top \hat{e}_{v_j} \text{ is high and } v_j \notin \mathcal{P}_u \right\} \right)
+\mathcal{N}^{\text{hard}}_i = \text{Top-}K \left( \\{ j : \hat{e}_{u_i}^\top \hat{e}_{v_j} \text{ is high and } v_j \notin \mathcal{P}_u \\} \right)
 $$
 
 ### 3.5 Evaluation Metrics
@@ -109,7 +109,7 @@ $$
 **Recall@K:** fraction of users for whom the held-out positive item appears in top-K:
 
 $$
-\text{Recall@}K = \frac{1}{|\mathcal{U}|} \sum_{u \in \mathcal{U}} \mathbf{1}\!\left[i^+_u \in \text{Top-}K(u)\right]
+\text{Recall@}K = \frac{1}{|\mathcal{U}|} \sum_{u \in \mathcal{U}} \mathbf{1} \left[i^+_u \in \text{Top-}K(u)\right]
 $$
 
 **Mean Reciprocal Rank (MRR):**
@@ -131,7 +131,7 @@ For single positive: $\text{NDCG@}K = \frac{1}{\log_2(\text{rank}(i^+_u) + 1)} \
 **IVF Index:** Partition embedding space into $L$ Voronoi cells via $k$-means. At query time, search only $n_{\text{probe}}$ nearest cells:
 
 $$
-\text{Voronoi}(c_l) = \left\{ \hat{e}_i : \|c_l - \hat{e}_i\|_2 \leq \|c_{l'} - \hat{e}_i\|_2, \forall l' \neq l \right\}
+\text{Voronoi}(c_l) = \\{ \hat{e}_i : \|c_l - \hat{e}_i\|_2 \leq \|c_{l'} - \hat{e}_i\|_2, \forall l' \neq l \\}
 $$
 
 $$
@@ -149,7 +149,7 @@ $$
 Popular items receive disproportionately stronger negative gradients under in-batch sampling:
 
 $$
-\mathbb{E}_{u \sim p(u)}\!\left[\nabla_{\hat{e}_v} \mathcal{L}_{\text{IBS}}\right] \propto p(v) \cdot (\hat{e}_{u}^\top \hat{e}_v - 1)
+\mathbb{E}_{u \sim p(u)} \left[\nabla_{\hat{e}_v} \mathcal{L}_{\text{IBS}}\right] \propto p(v) \cdot (\hat{e}_{u}^\top \hat{e}_v - 1)
 $$
 
 Popular items (high $p(v)$) receive stronger negative gradients → systematic under-retrieval at inference. The log-frequency correction addresses this bias.

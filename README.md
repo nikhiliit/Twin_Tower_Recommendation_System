@@ -370,7 +370,138 @@ Latency target: <20ms p99 ✅
 
 ---
 
-## 9. Production Considerations
+## 9. Serving Pipeline
+
+The trained model is exposed as a production-ready REST API built with **FastAPI**, featuring:
+- **A/B traffic routing** — serve two model variants simultaneously to run live experiments
+- **Cold-start fallback** — popularity-based recommendations for users not in the training set
+- **FAISS-backed retrieval** — sub-10ms end-to-end latency at inference
+- **Docker packaging** — single `docker compose up` for reproducible local deployment
+
+### 9.1 Architecture
+
+```
+Client Request
+     │
+     ▼
+POST /recommend ─────────────────────────────────────────────
+     │                                                       │
+ Known user?                                             New user?
+     │ yes                                                   │ no
+     ▼                                                       ▼
+AB Router (hash user_id)                          ColdStartHandler
+     │                                            (popularity rank)
+  ┌──┴──┐                                               │
+  ▼     ▼                                               ▼
+Model A  Model B                             Top-K popular items
+  │     │
+  └──┬──┘
+     ▼
+TwoTowerRetriever → FAISS Search → Top-K Items
+     │
+     ▼
+RecommendResponse { items, scores, model_variant, cold_start, latency_ms }
+```
+
+### 9.2 API Reference
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/recommend` | `POST` | Get top-K movie recommendations for a user |
+| `/health` | `GET` | Service readiness check + model metadata |
+| `/metrics` | `GET` | Per-variant A/B traffic and latency stats |
+| `/docs` | `GET` | Auto-generated OpenAPI / Swagger UI |
+
+**`POST /recommend` request:**
+```json
+{
+  "user_id": 1,
+  "k": 50,
+  "request_id": "optional-trace-id"
+}
+```
+
+**Response (known user):**
+```json
+{
+  "user_id": 1,
+  "items": [318, 296, 356, 593, 2571],
+  "scores": [0.9999, 0.9999, 0.9999, 0.9999, 0.9999],
+  "model_variant": "B",
+  "cold_start": false,
+  "latency_ms": 9.3
+}
+```
+
+**Response (cold-start user):**
+```json
+{
+  "user_id": 9999999,
+  "items": [318, 296, 356, 593, 2571],
+  "scores": [0.0, 0.0, 0.0, 0.0, 0.0],
+  "model_variant": "A",
+  "cold_start": true,
+  "latency_ms": 0.056
+}
+```
+
+### 9.3 A/B Testing
+
+The `ABRouter` uses a **deterministic MD5 hash** of the user ID to assign variants — the same user always hits the same variant across server restarts, ensuring consistent experiment conditions.
+
+| Environment Variable | Default | Description |
+|---|---|---|
+| `MODEL_A_CHECKPOINT` | `checkpoints/best_model.pt` | Path to variant A checkpoint |
+| `MODEL_B_CHECKPOINT` | `checkpoints/best_model.pt` | Path to variant B checkpoint |
+| `AB_TRAFFIC_SPLIT` | `0.5` | Fraction of users routed to variant A |
+
+**Example: Running hard-negative vs in-batch A/B test**
+```bash
+MODEL_A_CHECKPOINT=checkpoints/hardneg/best_model.pt \
+MODEL_B_CHECKPOINT=checkpoints/inbatch/best_model.pt \
+AB_TRAFFIC_SPLIT=0.5 bash scripts/serve.sh
+```
+
+Live experiment stats are available at `GET /metrics`:
+```json
+{
+  "variants": {
+    "A": { "requests": 500, "cold_start_rate": 0.02, "avg_latency_ms": 8.7 },
+    "B": { "requests": 500, "cold_start_rate": 0.02, "avg_latency_ms": 9.1 }
+  }
+}
+```
+
+### 9.4 Cold-Start Fallback
+
+`ColdStartHandler` pre-computes a global popularity ranking from training interaction frequencies at server startup. Cold-start responses are **O(1)** — no model inference required.
+
+- Users not present in the feature store automatically receive popular items
+- The `cold_start: true` flag in the response lets the client differentiate
+
+### 9.5 Running Locally
+
+**Option 1 — Local dev (with hot-reload):**
+```bash
+bash scripts/serve.sh
+```
+
+**Option 2 — Docker (recommended for production parity):**
+```bash
+docker compose up
+```
+
+> **Note:** Both options require a trained checkpoint at `checkpoints/best_model.pt` and a built FAISS index at `checkpoints/faiss_index`. Run the training and index steps first:
+> ```bash
+> python scripts/train.py --config configs/hardneg_config.yaml
+> python scripts/build_index.py --config configs/hardneg_config.yaml
+> ```
+
+The API is available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
+
+---
+
+## 10. Production Considerations
 
 ### Feature Freshness
 - **User embeddings:** recomputed at request time (real-time tower inference)

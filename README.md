@@ -221,8 +221,8 @@ two_tower_retrieval/
 
 ```bash
 # Clone the repository
-git clone <repo-url>
-cd two_tower_retrieval
+git clone https://github.com/nikhiliit/Twin_Tower_Recommendation_System.git
+cd Twin_Tower_Recommendation_System
 
 # Install dependencies
 pip install -e ".[dev]"

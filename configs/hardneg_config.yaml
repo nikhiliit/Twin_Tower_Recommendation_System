@@ -1,0 +1,19 @@
+# configs/hardneg_config.yaml
+# Overrides for hard negative sampled softmax experiment.
+
+experiment:
+  name: "two_tower_hardneg"
+
+training:
+  loss: "hard_negative"
+  epochs: 10
+  learning_rate: 5.0e-4
+
+loss:
+  temperature: 0.1
+  initial_temperature: 0.5
+  warmup_epochs: 3
+  hard_neg_ratio: 0.3
+  hard_neg_pool_size: 50
+  dynamic_mining: true
+  use_frequency_correction: true

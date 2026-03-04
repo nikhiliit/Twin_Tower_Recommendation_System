@@ -1,0 +1,12 @@
+# configs/inbatch_config.yaml
+# Overrides for in-batch softmax loss experiment.
+
+experiment:
+  name: "two_tower_inbatch"
+
+training:
+  loss: "in_batch_softmax"
+
+loss:
+  temperature: 0.07
+  use_frequency_correction: true

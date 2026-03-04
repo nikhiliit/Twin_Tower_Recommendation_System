@@ -1,0 +1,67 @@
+# configs/base_config.yaml
+# Master configuration for Two-Tower Retrieval System.
+# All hyperparameters are defined here with sensible defaults.
+
+experiment:
+  name: "two_tower_baseline"
+  seed: 42
+  device: "auto"  # auto | cuda | mps | cpu
+
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  min_interactions: 5          # filter users with fewer interactions
+  test_size: 1                 # last N interactions per user for test
+  val_size: 1                  # second-to-last for val
+  rating_threshold: 3.5        # binarization threshold for implicit feedback
+
+model:
+  embedding_dim: 64
+  user_hidden_dims: [256, 128]
+  item_hidden_dims: [192, 128]
+  dropout: 0.1
+  use_genome_features: true
+  use_history_embedding: true
+  history_length: 50           # last N items in interaction history
+
+training:
+  loss: "in_batch_softmax"     # options: bpr | in_batch_softmax | hard_negative
+  batch_size: 1024
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-5
+  epochs: 20
+  early_stopping_patience: 3
+  gradient_clip_norm: 1.0
+  num_workers: 4
+  log_every_n_steps: 100
+  checkpoint_dir: "checkpoints/"
+
+loss:
+  # BPR specific
+  bpr_n_negatives: 1
+
+  # In-batch softmax specific
+  temperature: 0.07
+  use_frequency_correction: true
+
+  # Hard negative specific
+  hard_neg_ratio: 0.3          # fraction of negatives that are hard
+  hard_neg_pool_size: 50       # top-K from FAISS to sample hard negs
+  dynamic_mining: true         # rebuild hard neg index each epoch
+  warmup_epochs: 0             # epochs of in-batch-only warmup before hard negs
+  initial_temperature: null    # starting temperature for annealing (null = no annealing)
+
+faiss:
+  index_type: "IVFFlat"        # options: Flat | IVFFlat | IVFPQ
+  nlist: 100
+  nprobe: 10
+  metric: "inner_product"
+
+evaluation:
+  k_values: [10, 20, 50, 100]
+  primary_metric: "recall_at_50"
+  cohort_thresholds: [5, 20]   # cold: <5, medium: 5-20, power: >20
+
+mlflow:
+  tracking_uri: "mlruns/"
+  experiment_name: "two_tower_retrieval"

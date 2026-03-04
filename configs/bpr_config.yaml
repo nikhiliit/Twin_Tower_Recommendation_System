@@ -1,0 +1,11 @@
+# configs/bpr_config.yaml
+# Overrides for BPR loss experiment.
+
+experiment:
+  name: "two_tower_bpr"
+
+training:
+  loss: "bpr"
+
+loss:
+  bpr_n_negatives: 1
